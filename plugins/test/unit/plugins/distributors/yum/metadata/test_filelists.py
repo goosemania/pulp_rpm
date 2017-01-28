@@ -4,6 +4,7 @@ import unittest
 
 import mock
 
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.yum.metadata.filelists import FilelistsXMLFileContext
 
 
@@ -22,19 +23,9 @@ class FilelistsXMLFileContextTests(unittest.TestCase):
     def test_add_unit_metadata(self):
         context = FilelistsXMLFileContext(self.working_dir, 3)
         context.metadata_file_handle = mock.Mock()
+        unit = models.RPM()
+        unit.set_repodata('filelists', 'bar')
 
-        context.add_unit_metadata(mock.Mock(repodata={'filelists': 'bar'}))
+        context.add_unit_metadata(unit)
 
         context.metadata_file_handle.write.assert_called_once_with('bar')
-
-    def test_add_unit_metadata_unicode(self):
-        """
-        Test that the filelists repodata is passed as a str even if it's a unicode object.
-        """
-        context = FilelistsXMLFileContext(self.working_dir, 3)
-        context.metadata_file_handle = mock.Mock()
-        expected_call = 'some unicode'
-        repodata = {'filelists': unicode(expected_call)}
-
-        context.add_unit_metadata(mock.Mock(repodata=repodata))
-        context.metadata_file_handle.write.assert_called_once_with(expected_call)

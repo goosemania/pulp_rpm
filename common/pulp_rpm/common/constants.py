@@ -180,3 +180,5 @@ REPO_AUTH_CONFIG_FILE = '/etc/pulp/repo_auth.conf'
 # used in the scratchpad
 REPOMD_REVISION_KEY = 'repomd_revision'
 PREVIOUS_SKIP_LIST = 'previous_skip_list'
+
+MANDATORY_METADATA_TYPES = ('primary', 'filelists', 'other')

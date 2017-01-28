@@ -51,7 +51,7 @@ class PrimaryXMLFileContext(FastForwardXmlFileContext):
         :param unit: unit whose metadata is to be written
         :type  unit: pulp_rpm.plugins.db.models.RpmBase
         """
-        metadata = unit.repodata['primary']
+        metadata = unit.get_repodata('primary')
         if isinstance(metadata, unicode):
             metadata = metadata.encode('utf-8')
         self.metadata_file_handle.write(metadata)
