@@ -654,15 +654,16 @@ class TestMangleRepodataPrimaryXML(unittest.TestCase):
 
     def setUp(self):
         self.unit = models.RPM()
-        self.unit.repodata['primary'] = self.PRIMARY_XML
+        self.repodata = {'primary': self.PRIMARY_XML}
         self.unit.filename = 'fixed-filename.rpm'
 
     def test_update_provides_requires(self):
-        upload._update_provides_requires(self.unit)
+        upload._update_provides_requires(self.unit, self.repodata)
         self.assertEqual(len(self.unit.provides), 1)
         self.assertEqual(len(self.unit.requires), 2)
 
     def test_update_location(self):
-        upload._update_location(self.unit)
-        self.assertTrue('fixme' not in self.unit.repodata['primary'])
-        self.assertTrue(self.unit.filename in self.unit.repodata['primary'])
+        upload._update_location(self.unit, self.repodata)
+        self.unit.set_repodata('primary', self.repodata['primary'])
+        self.assertTrue('fixme' not in self.unit.get_repodata('primary'))
+        self.assertTrue(self.unit.filename in self.unit.get_repodata('primary'))

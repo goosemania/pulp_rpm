@@ -1,9 +1,11 @@
 import csv
+import gzip
 import logging
 import os
 from gettext import gettext as _
 from urlparse import urljoin
 
+import bson
 import mongoengine
 from pulp.plugins.util import verification
 from pulp.server.db.model import ContentUnit, FileContentUnit
@@ -560,6 +562,31 @@ class RpmBase(NonMetadataPackage):
         This should only be used during the initial sync
         """
         return self.relativepath
+
+    def set_repodata(self, metadata_type, xml_snippet):
+        """
+        Compress metadata and put it into `repodata` attribute which will be saved to the db later.
+
+        :param metadata_type: key for the `repodata` dictionary which indicates type of metadata
+        :type  metadata_type: str
+        :param xml_snippet: utf-8 string which will be compressed and put into `repodata` dictionary
+        :type  xml_snippet: str
+        """
+        if isinstance(xml_snippet, unicode):
+            xml_snippet = xml_snippet.encode('utf-8')
+        self.repodata[metadata_type] = bson.binary.Binary(gzip.zlib.compress(xml_snippet))
+
+    def get_repodata(self, metadata_type):
+        """
+        Get metadata from db and decompress it.
+
+        :param metadata_type: key for the `repodata` dictionary which indicates type of metadata
+        :type  metadata_type: str
+
+        :return: requested xml snippet
+        :rtype:  unicode
+        """
+        return gzip.zlib.decompress(self.repodata[metadata_type]).decode('utf-8')
 
 
 class RPM(RpmBase):

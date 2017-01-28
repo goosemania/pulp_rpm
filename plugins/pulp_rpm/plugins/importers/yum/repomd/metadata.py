@@ -338,13 +338,13 @@ class MetadataFiles(object):
                 raw_xml = db_file[db_key]
             finally:
                 db_file.close()
-            model.repodata[filename] = raw_xml
+            model.set_repodata(filename, raw_xml)
             element = ElementTree.fromstring(raw_xml)
             unit_key, items = process_func(element)
             setattr(model, metadata_key, items)
 
-        raw_xml = model.raw_xml
-        model.repodata['primary'] = change_location_tag(raw_xml, model.filename)
+        primary_xml_snippet = change_location_tag(model.raw_xml, model.filename)
+        model.set_repodata('primary', primary_xml_snippet)
 
 
 def process_repomd_data_element(data_element):

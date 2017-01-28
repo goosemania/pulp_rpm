@@ -4,6 +4,7 @@ import unittest
 
 import mock
 
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.yum.metadata.primary import PrimaryXMLFileContext
 
 
@@ -21,15 +22,7 @@ class PrimaryXMLFileContextTests(unittest.TestCase):
 
     def test_add_unit_metadata(self):
         self.context.metadata_file_handle = mock.Mock()
-        self.context.add_unit_metadata(mock.Mock(repodata={'primary': 'bar'}))
+        unit = models.RPM()
+        unit.set_repodata('primary', 'bar')
+        self.context.add_unit_metadata(unit)
         self.context.metadata_file_handle.write.assert_called_once_with('bar')
-
-    def test_add_unit_metadata_unicode(self):
-        """
-        Test that the primary repodata is passed as a str even if it's a unicode object.
-        """
-        self.context.metadata_file_handle = mock.Mock()
-        expected_call = 'some unicode'
-        repodata = {'primary': unicode(expected_call)}
-        self.context.add_unit_metadata(mock.Mock(repodata=repodata))
-        self.context.metadata_file_handle.write.assert_called_once_with(expected_call)

@@ -387,9 +387,11 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
         raise ModelInstantiationError()
 
     # Extract/adjust the repodata snippets
-    unit.repodata = rpm_parse.get_package_xml(file_path, sumtype=unit.checksumtype)
-    _update_provides_requires(unit)
-    _update_location(unit)
+    repodata = rpm_parse.get_package_xml(file_path, sumtype=unit.checksumtype)
+    _update_provides_requires(unit, repodata)
+    _update_location(unit, repodata)
+    for metadata_key in repodata:
+        unit.set_repodata(metadata_key, repodata[metadata_key])
 
     # check if the unit has duplicate nevra
     purge.remove_unit_duplicate_nevra(unit, repo)
@@ -426,7 +428,7 @@ def _fake_xml_element(repodata_snippet):
     return ET.fromstring(fake_xml.encode(codec))
 
 
-def _update_provides_requires(unit):
+def _update_provides_requires(unit, repodata):
     """
     Determines the provides and requires fields based on the RPM's XML snippet and updates
     the model instance.
@@ -434,8 +436,10 @@ def _update_provides_requires(unit):
     :param unit: the unit being added to Pulp; the metadata attribute must already have
                  a key called 'repodata'
     :type  unit: subclass of pulp.server.db.model.ContentUnit
+    :param repodata: xml snippets to analyze
+    :type  repodata: dict
     """
-    fake_element = _fake_xml_element(unit.repodata['primary'])
+    fake_element = _fake_xml_element(repodata['primary'])
     utils.strip_ns(fake_element)
     primary_element = fake_element.find('package')
     format_element = primary_element.find('format')
@@ -447,7 +451,7 @@ def _update_provides_requires(unit):
                         requires_element.findall('entry')) if requires_element else []
 
 
-def _update_location(unit):
+def _update_location(unit, repodata):
     """
     Fix a unit's repodata primary xml
 
@@ -460,20 +464,22 @@ def _update_location(unit):
     :param unit: the unit being added to Pulp; the metadata attribute must already have
                  a key called 'repodata'
     :type  unit: subclass of pulp.server.db.model.ContentUnit
+    :param repodata: xml snippets to analyze
+    :type  repodata: dict
     """
-    fake_element = _fake_xml_element(unit.repodata['primary'])
+    fake_element = _fake_xml_element(repodata['primary'])
     primary_element = fake_element.find('package')
     location_element = primary_element.find('location')
     location_element.set('href', unit.filename)
     new_location = ET.tostring(location_element).strip()
-    lines = list(unit.repodata['primary'].splitlines())
+    lines = list(repodata['primary'].splitlines())
     # rather than deal with the xml namespaces, just
     # replace the old location with the new one in-place
     for i, line in enumerate(lines):
         index = line.find('<location')
         if index != -1:
             lines[i] = line[:index] + new_location
-    unit.repodata['primary'] = '\n'.join(lines)
+    repodata['primary'] = '\n'.join(lines)
 
 
 def _extract_rpm_data(type_id, rpm_filename):
