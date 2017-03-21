@@ -1,5 +1,8 @@
 from cStringIO import StringIO
+import gzip
 import sys
+
+import bson
 
 from pulp.server.db import connection
 
@@ -92,23 +95,31 @@ def _modify_xml(repodata):
     :return:    new repodata dict with templatized XML
     :rtype:     dict
     """
-    faked_primary = fake_xml_element(repodata['primary'])
+    repodata_xml = {}
+    for metadata_type in repodata:
+        repodata_xml[metadata_type] = get_repodata(metadata_type, repodata)
+
+    faked_primary = fake_xml_element(repodata_xml['primary'])
     primary = faked_primary.find('package')
 
-    faked_other = fake_xml_element(repodata['other'])
+    faked_other = fake_xml_element(repodata_xml['other'])
     other = faked_other.find('package')
 
-    faked_filelists = fake_xml_element(repodata['filelists'])
+    faked_filelists = fake_xml_element(repodata_xml['filelists'])
     filelists = faked_filelists.find('package')
 
     _templatize_checksum(primary)
     _templatize_pkgid(other)
     _templatize_pkgid(filelists)
 
+    primary_snippet = remove_fake_element(element_to_text(faked_primary))
+    other_snippet = element_to_text(other)
+    filelists_snippet = element_to_text(filelists)
+
     return {
-        'primary': remove_fake_element(element_to_text(faked_primary)),
-        'other': element_to_text(other),
-        'filelists': element_to_text(filelists),
+        'primary': compress_repodata(primary_snippet),
+        'other': compress_repodata(other_snippet),
+        'filelists': compress_repodata(filelists_snippet)
     }
 
 
@@ -193,3 +204,33 @@ def element_to_text(element):
     tree = ET.ElementTree(element)
     tree.write(out, encoding='utf-8')
     return out.getvalue()
+
+
+def compress_repodata(xml_snippet):
+    """
+    Compress metadata which will be saved to the db later.
+
+    :param xml_snippet: utf-8 string which will be compressed and put into `repodata` dictionary
+    :type  xml_snippet: str
+
+    :return: compressed metadata
+    :rtype:  bson.binary.Binary
+    """
+    if isinstance(xml_snippet, unicode):
+        xml_snippet = xml_snippet.encode('utf-8')
+    return bson.binary.Binary(gzip.zlib.compress(xml_snippet))
+
+
+def get_repodata(metadata_type, unit_repodata):
+    """
+    Get metadata from db and decompress it.
+
+    :param metadata_type: key for the `repodata` dictionary which indicates type of metadata
+    :type  metadata_type: str
+    :param unit_repodata: the `repodata` of a unit
+    :type  unit_repodata: dict which values are of type bson.binary.Binary
+
+    :return: requested xml snippet
+    :rtype:  unicode
+    """
+    return gzip.zlib.decompress(unit_repodata[metadata_type]).decode('utf-8')

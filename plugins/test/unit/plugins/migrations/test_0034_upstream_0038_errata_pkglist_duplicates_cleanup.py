@@ -5,7 +5,7 @@ import mock
 from pulp.server.db.migrate.models import _import_all_the_way
 
 
-PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0038_errata_pkglist_duplicates_cleanup'
+PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0034_upstream_0038_errata_pkglist_duplicates_cleanup'
 migration = _import_all_the_way(PATH_TO_MODULE)
 
 
@@ -57,4 +57,4 @@ class TestMigrateErratum(unittest.TestCase):
 
         migration.migrate_erratum(mock_collection, self.erratum)
 
-        self.assertFalse(mock_collection.update.called)
+        self.assertFalse(mock_collection.update_one.called)

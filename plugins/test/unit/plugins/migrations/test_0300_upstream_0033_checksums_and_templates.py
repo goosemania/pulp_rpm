@@ -1,3 +1,5 @@
+import gzip
+
 from pulp.common.compat import unittest
 from xml.etree import ElementTree as ET
 
@@ -6,7 +8,7 @@ import mock
 from pulp.server.db.migrate.models import _import_all_the_way
 
 
-PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0033_checksums_and_templates'
+PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0300_upstream_0033_checksums_and_templates'
 migration = _import_all_the_way(PATH_TO_MODULE)
 
 
@@ -84,9 +86,9 @@ class TestModifyXml(unittest.TestCase):
     def setUp(self):
         super(TestModifyXml, self).setUp()
         self.repodata = {
-            'primary': PRIMARY,
-            'other': OTHER,
-            'filelists': FILELISTS,
+            'primary': gzip.zlib.compress(PRIMARY),
+            'other': gzip.zlib.compress(OTHER),
+            'filelists': gzip.zlib.compress(FILELISTS)
         }
 
     def assertParsable(self, text):
@@ -97,25 +99,28 @@ class TestModifyXml(unittest.TestCase):
 
     def test_other_template(self):
         ret = migration._modify_xml(self.repodata)
+        other_xml = gzip.zlib.decompress(ret['other'])
 
-        self.assertTrue('{{ pkgid }}' in ret['other'])
-        self.assertTrue('f4200643b' not in ret['other'])
-        self.assertParsable(ret['other'])
+        self.assertTrue('{{ pkgid }}' in other_xml)
+        self.assertTrue('f4200643b' not in other_xml)
+        self.assertParsable(other_xml)
 
     def test_filelists_template(self):
         ret = migration._modify_xml(self.repodata)
+        filelists_xml = gzip.zlib.decompress(ret['filelists'])
 
-        self.assertTrue('{{ pkgid }}' in ret['filelists'])
-        self.assertTrue('f4200643b' not in ret['filelists'])
-        self.assertParsable(ret['filelists'])
+        self.assertTrue('{{ pkgid }}' in filelists_xml)
+        self.assertTrue('f4200643b' not in filelists_xml)
+        self.assertParsable(filelists_xml)
 
     def test_primary_template(self):
         ret = migration._modify_xml(self.repodata)
+        primary_xml = gzip.zlib.decompress(ret['primary'])
 
-        self.assertTrue('{{ checksum }}' in ret['primary'])
-        self.assertTrue('{{ checksumtype }}' in ret['primary'])
-        self.assertTrue('f4200643b' not in ret['primary'])
-        self.assertTrue('sha256' not in ret['primary'])
+        self.assertTrue('{{ checksum }}' in primary_xml)
+        self.assertTrue('{{ checksumtype }}' in primary_xml)
+        self.assertTrue('f4200643b' not in primary_xml)
+        self.assertTrue('sha256' not in primary_xml)
 
 
 PRIMARY = '''

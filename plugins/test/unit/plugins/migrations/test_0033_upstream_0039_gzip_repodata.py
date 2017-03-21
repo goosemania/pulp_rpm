@@ -8,7 +8,7 @@ from pulp.common.compat import unittest
 from pulp.server.db.migrate.models import _import_all_the_way
 
 
-PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0039_gzip_repodata'
+PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0033_upstream_0039_gzip_repodata'
 migration = _import_all_the_way(PATH_TO_MODULE)
 
 
@@ -36,35 +36,19 @@ class TestMigrateRPMBase(unittest.TestCase):
         self.repodata = {'primary': u'\u041f\u0440\u0438\u0432\u0435\u0442! stuff',
                          'filelists': u'\u041f\u0440\u0438\u0432\u0435\u0442! stuff',
                          'other': u'\u041f\u0440\u0438\u0432\u0435\u0442! stuff'}
+        self.rpm = {
+            '_id': '1234',
+            'repodata': copy.copy(self.repodata)
+        }
 
     def test_calls_update(self):
         mock_collection = mock.MagicMock()
-        self.rpm = {
-            '_id': '1234',
-            'repodata': copy.copy(self.repodata)
-        }
 
         migration.migrate_rpm_base(mock_collection, self.rpm)
 
-        expected_delta = {'repodata': {}}
-        for mtype, metadata in self.rpm['repodata'].items():
-            compressed_metadata = gzip.zlib.compress(metadata.encode('utf-8'))
-            expected_delta['repodata'][mtype] = bson.binary.Binary(compressed_metadata)
-
+        expected_delta = {
+            'repodata': {mtype: bson.binary.Binary(gzip.zlib.compress(metadata.encode('utf-8')))
+                         for mtype, metadata in self.rpm['repodata'].items()}
+        }
         mock_collection.update_one.assert_called_once_with({'_id': '1234'},
                                                            {'$set': expected_delta})
-
-    def test_rerun_migration(self):
-        mock_collection = mock.MagicMock()
-        self.rpm = {
-            '_id': '1234',
-            'repodata': copy.copy(self.repodata)
-        }
-
-        for mtype, metadata in self.rpm['repodata'].items():
-            compressed_metadata = gzip.zlib.compress(metadata.encode('utf-8'))
-            self.rpm['repodata'][mtype] = bson.binary.Binary(compressed_metadata)
-
-        migration.migrate_rpm_base(mock_collection, self.rpm)
-
-        self.assertFalse(mock_collection.update_one.called)

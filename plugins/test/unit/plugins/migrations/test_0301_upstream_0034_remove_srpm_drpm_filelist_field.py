@@ -5,7 +5,7 @@ import mock
 from pulp.server.db.migrate.models import _import_all_the_way
 
 
-PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0034_remove_srpm_drpm_filelist_field'
+PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0301_upstream_0034_remove_srpm_drpm_filelist_field'
 
 migration = _import_all_the_way(PATH_TO_MODULE)
 

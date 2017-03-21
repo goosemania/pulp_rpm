@@ -4,7 +4,7 @@ from pulp.common.compat import unittest
 from pulp.server.db.migrate.models import _import_all_the_way
 
 
-PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0037_rpm_primary_repodata_new_location'
+PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0304_upstream_0037_rpm_primary_repodata_new_location'
 migration = _import_all_the_way(PATH_TO_MODULE)
 
 
@@ -46,50 +46,40 @@ class TestMigrateRPMBase(unittest.TestCase):
 
 
 class TestFixLocation(unittest.TestCase):
-    def test_fix_location_lowercase(self):
-        rpm = "mouse-0.1.12-1.noarch.rpm"
-        repodata = {
-            'primary': PRIMARY,
-            'other': OTHER,
-            'filelists': FILELISTS,
+    def setUp(self):
+        super(TestFixLocation, self).setUp()
+        self.repodata = {
+            'primary': gzip.zlib.compress(PRIMARY),
+            'other': gzip.zlib.compress(OTHER),
+            'filelists': gzip.zlib.compress(FILELISTS)
         }
 
-        ret = migration.fix_location(repodata, rpm)
+    def test_fix_location_lowercase(self):
+        rpm = "mouse-0.1.12-1.noarch.rpm"
+        ret = migration.fix_location(self.repodata, rpm)
 
-        self.assertIn('Packages/m/%s"' % rpm, ret["primary"])
-        self.assertNotIn('<location href="foo-bar.rpm"/>', ret["primary"])
-        self.assertEqual(ret["other"], OTHER)
-        self.assertEqual(ret["filelists"], FILELISTS)
+        self.assertIn('Packages/m/%s"' % rpm, gzip.zlib.decompress(ret["primary"]))
+        self.assertNotIn('<location href="foo-bar.rpm"/>', gzip.zlib.decompress(ret["primary"]))
+        self.assertEqual(gzip.zlib.decompress(ret["other"]), OTHER)
+        self.assertEqual(gzip.zlib.decompress(ret["filelists"]), FILELISTS)
 
     def test_fix_location_uppercase(self):
         rpm = "Mouse-0.1.12-1.noarch.rpm"
-        repodata = {
-            'primary': PRIMARY,
-            'other': OTHER,
-            'filelists': FILELISTS,
-        }
+        ret = migration.fix_location(self.repodata, rpm)
 
-        ret = migration.fix_location(repodata, rpm)
-
-        self.assertIn('Packages/m/%s"' % rpm, ret["primary"])
-        self.assertNotIn('foo-bar.rpm"', ret["primary"])
-        self.assertEqual(ret["other"], OTHER)
-        self.assertEqual(ret["filelists"], FILELISTS)
+        self.assertIn('Packages/m/%s"' % rpm, gzip.zlib.decompress(ret["primary"]))
+        self.assertNotIn('foo-bar.rpm"', gzip.zlib.decompress(ret["primary"]))
+        self.assertEqual(gzip.zlib.decompress(ret["other"]), OTHER)
+        self.assertEqual(gzip.zlib.decompress(ret["filelists"]), FILELISTS)
 
     def test_fix_location_number(self):
         rpm = "1-mouse-0.1.12-1.noarch.rpm"
-        repodata = {
-            'primary': PRIMARY,
-            'other': OTHER,
-            'filelists': FILELISTS,
-        }
+        ret = migration.fix_location(self.repodata, rpm)
 
-        ret = migration.fix_location(repodata, rpm)
-
-        self.assertIn('Packages/1/%s"' % rpm, ret["primary"])
-        self.assertNotIn('foo-bar.rpm"', ret["primary"])
-        self.assertEqual(ret["other"], OTHER)
-        self.assertEqual(ret["filelists"], FILELISTS)
+        self.assertIn('Packages/1/%s"' % rpm, gzip.zlib.decompress(ret["primary"]))
+        self.assertNotIn('foo-bar.rpm"', gzip.zlib.decompress(ret["primary"]))
+        self.assertEqual(gzip.zlib.decompress(ret["other"]), OTHER)
+        self.assertEqual(gzip.zlib.decompress(ret["filelists"]), FILELISTS)
 
 PRIMARY = '''
 <package type="rpm">
