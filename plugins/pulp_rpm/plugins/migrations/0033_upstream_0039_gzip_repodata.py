@@ -12,7 +12,7 @@ _logger = logging.getLogger(__name__)
 def migrate(*args, **kwargs):
     """
     Compress the content of repodata field for RPM and SRPM units.
-    Migration can be safely re-run multiple times.
+    Log the progress after every 10% of the each collection is migrated.
 
     :param args:   unused
     :type  args:   list
@@ -69,15 +69,12 @@ def migrate_rpm_base(collection, unit):
     """
     Compress 'primary', 'other' and 'filelists' metadata for a given unit.
 
-    Compressed metadata is stored in DB as a binary type.
-    For each metadata migration is performed only if the metadata is still a string and
-    not yet of a binary type.
-
     :param collection:  collection of RPM units
     :type  collection:  pymongo.collection.Collection
     :param unit:        the RPM unit being migrated
     :type  unit:        dict
     """
+
     delta = {'repodata': {}}
     for metadata_type in ['primary', 'other', 'filelists']:
         metadata = unit['repodata'].get(metadata_type)

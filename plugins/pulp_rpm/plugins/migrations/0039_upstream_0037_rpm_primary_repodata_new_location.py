@@ -1,6 +1,9 @@
 from cStringIO import StringIO
+import gzip
 import sys
 import os
+
+import bson
 
 from pulp.server.db import connection
 
@@ -70,15 +73,17 @@ def fix_location(repodata, filename):
     :param filename:        the name of the RPM's file
     :type  filename:        basestring
     """
-    faked_primary = fake_xml_element(repodata['primary'])
+    faked_primary = fake_xml_element(get_repodata('primary', repodata))
     primary = faked_primary.find('package')
 
     _update_location(primary, filename)
 
+    primary_snippet = remove_fake_element(element_to_text(faked_primary))
     return {
-        'primary': remove_fake_element(element_to_text(faked_primary)),
-        'other': repodata["other"],
-        'filelists': repodata["filelists"],
+        'primary': compress_repodata(primary_snippet),
+        # the rest of the metadata is unmodified and thus already compressed
+        'other': repodata['other'],
+        'filelists': repodata['filelists'],
     }
 
 
@@ -153,3 +158,33 @@ def element_to_text(element):
     tree = ET.ElementTree(element)
     tree.write(out, encoding='utf-8')
     return out.getvalue()
+
+
+def compress_repodata(xml_snippet):
+    """
+    Compress metadata which will be saved to the db later.
+
+    :param xml_snippet: utf-8 string which will be compressed and put into `repodata` dictionary
+    :type  xml_snippet: str
+
+    :return: compressed metadata
+    :rtype:  bson.binary.Binary
+    """
+    if isinstance(xml_snippet, unicode):
+        xml_snippet = xml_snippet.encode('utf-8')
+    return bson.binary.Binary(gzip.zlib.compress(xml_snippet))
+
+
+def get_repodata(metadata_type, unit_repodata):
+    """
+    Get metadata from db and decompress it.
+
+    :param metadata_type: key for the `repodata` dictionary which indicates type of metadata
+    :type  metadata_type: str
+    :param unit_repodata: the `repodata` of a unit
+    :type  unit_repodata: dict which values are of type bson.binary.Binary
+
+    :return: requested xml snippet
+    :rtype:  unicode
+    """
+    return gzip.zlib.decompress(unit_repodata[metadata_type]).decode('utf-8')
