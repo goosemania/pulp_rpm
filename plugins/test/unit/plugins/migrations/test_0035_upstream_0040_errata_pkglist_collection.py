@@ -7,7 +7,7 @@ from pymongo.errors import DuplicateKeyError
 from pulp.server.db.migrate.models import _import_all_the_way
 
 
-PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0040_errata_pkglist_collection'
+PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0035_upstream_0040_errata_pkglist_collection'
 migration = _import_all_the_way(PATH_TO_MODULE)
 
 
