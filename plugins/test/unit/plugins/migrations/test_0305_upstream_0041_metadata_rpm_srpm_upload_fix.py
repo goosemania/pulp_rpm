@@ -3,7 +3,7 @@ import mock
 from pulp.common.compat import unittest
 from pulp.server.db.migrate.models import _import_all_the_way
 
-PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0041_metadata_rpm_srpm_upload_fix'
+PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0305_upstream_0041_metadata_rpm_srpm_upload_fix'
 
 migration = _import_all_the_way(PATH_TO_MODULE)
 
