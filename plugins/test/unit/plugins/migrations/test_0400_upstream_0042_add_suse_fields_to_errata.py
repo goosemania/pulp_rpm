@@ -3,8 +3,8 @@ import unittest
 from pulp.server.db.migrate.models import _import_all_the_way
 import mock
 
-migration = _import_all_the_way('pulp_rpm.plugins.migrations.0042_add_suse_'
-                                'fields_to_errata')
+migration = _import_all_the_way('pulp_rpm.plugins.migrations.0400_upstream_0042_add_'
+                                'suse_fields_to_errata')
 
 
 class TestMigrate(unittest.TestCase):

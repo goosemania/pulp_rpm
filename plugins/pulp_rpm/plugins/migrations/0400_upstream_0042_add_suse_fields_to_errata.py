@@ -4,7 +4,7 @@ from pulp.server.db.connection import get_collection
 from pulp.server.db.migrations.lib import utils
 
 
-_logger = logging.getLogger('pulp_rpm.plugins.migrations.0042')
+_logger = logging.getLogger('pulp_rpm.plugins.migrations.0400')
 
 
 def migrate(*args, **kwargs):
