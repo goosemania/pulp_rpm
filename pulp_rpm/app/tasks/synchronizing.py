@@ -313,16 +313,18 @@ class RpmFirstStage(Stage):
                                 coll_dict = UpdateCollection.createrepo_to_dict(collection)
                                 coll = UpdateCollection(**coll_dict)
 
+
                                 for package in collection.packages:
                                     pkg_dict = UpdateCollectionPackage.createrepo_to_dict(package)
                                     pkg = UpdateCollectionPackage(**pkg_dict)
-                                    coll._packages.append(pkg)
+                                    coll.packages.add(pkg, bulk=False)
 
-                                update_record._collections.append(coll)
+                                update_record.collections.add(coll, bulk=False)
 
                             for reference in update.references:
                                 reference_dict = UpdateReference.createrepo_to_dict(reference)
-                                update_record._references.append(UpdateReference(**reference_dict))
+                                ref = UpdateReference(**reference_dict)
+                                update_record.references.add(ref, bulk=False)
 
                             erratum_pb.increment()
                             dc = DeclarativeContent(content=update_record)
@@ -351,38 +353,33 @@ class RpmContentSaver(ContentSaver):
                 :class:`~pulpcore.plugin.stages.DeclarativeContent` objects to be saved.
 
         """
-        update_collection_to_save = []
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('localhost', port=2048, stdoutToServer=True, stderrToServer=True)
+        update_collections_to_save = []
         update_references_to_save = []
+        update_collection_packages_to_save = []
         for declarative_content in batch:
             if declarative_content is None:
                 continue
             if not isinstance(declarative_content.content, UpdateRecord):
                 continue
             update_record = declarative_content.content
-            try:
-                update_collections = update_record._collections
-            except AttributeError:
-                pass  # This UpdateRecord was found in the db or has no collections or references
-            else:
-                for update_collection in update_collections:
-                    update_collection.update_record = update_record
-                    update_collection_to_save.append(update_collection)
-
-                update_references = update_record._references
-                for update_reference in update_references:
-                    update_reference.update_record = update_record
-                    update_references_to_save.append(update_reference)
-
-        update_collection_packages_to_save = []
-        if update_collection_to_save:
-            saved_collections = UpdateCollection.objects.bulk_create(update_collection_to_save)
-            for update_collection in saved_collections:
-                for update_collection_package in update_collection._packages:
-                    update_collection_package.update_collection = update_collection
-                    update_collection_packages_to_save.append(update_collection_package)
-
-            if update_collection_packages_to_save:
-                UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
-
-        if update_references_to_save:
-            UpdateReference.objects.bulk_create(update_references_to_save)
+            a = 1
+        #     for update_collection in update_record.collections:
+        #         update_collections_to_save.append(update_collection)
+        #         for update_collection_package in update_collection.packages:
+        #             update_collection_packages_to_save.append(update_collection_package)
+        #
+        #     for update_reference in update_record.references:
+        #         update_reference.update_record = update_record
+        #         update_references_to_save.append(update_reference)
+        #
+        #
+        # if update_collections_to_save:
+        #     UpdateCollection.objects.bulk_create(update_collection_to_save)
+        #
+        # if update_collection_packages_to_save:
+        #     UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
+        #
+        # if update_references_to_save:
+        #     UpdateReference.objects.bulk_create(update_references_to_save)
