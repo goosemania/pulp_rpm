@@ -5,7 +5,7 @@ from gettext import gettext as _
 from pulp.server.db.connection import get_collection
 from pulp.server.db.migrations.lib import utils
 
-_LOGGER = logging.getLogger('pulp_rpm.plugins.migrations.0048')
+_LOGGER = logging.getLogger('pulp_rpm.plugins.migrations.0700')
 
 units_rpm_collection = get_collection('units_rpm')
 units_modulemd_collection = get_collection('units_modulemd')
