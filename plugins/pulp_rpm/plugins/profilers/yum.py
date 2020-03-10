@@ -3,6 +3,7 @@ from gettext import gettext as _
 from mongoengine import Q
 
 from pulp.plugins.profiler import Profiler, InvalidUnitsRequested
+from pulp.plugins.util import misc
 from pulp.server.controllers import repository as repo_controller
 from pulp.server.db import model
 from pulp.server.db.model.criteria import UnitAssociationCriteria
@@ -15,6 +16,79 @@ from pulp_rpm.yum_plugin import util
 _logger = util.getLogger(__name__)
 
 NVREA_KEYS = ['name', 'version', 'release', 'epoch', 'arch']
+
+# Constants for loading data from the database.
+# 'pk' maps to 'id' in mongoengine, maps to '_id' in mongodb
+BASE_UNIT_FIELDS = set(['pk'])
+
+RPM_FIELDS = BASE_UNIT_FIELDS | set([
+    'name',
+    'version',
+    'release',
+    'epoch',
+    'arch',
+])
+
+RPM_EXCLUDE_FIELDS = set([
+    'build_time',
+    'buildhost',
+    'pulp_user_metadata',
+    '_content_type_id',
+    'checksums',
+    'size',
+    'license',
+    'group',
+    '_ns',
+    'filename',
+    'epoch',
+    'version',
+    'version_sort_index',
+    'provides',
+    'files',
+    'repodata',
+    'description',
+    '_last_updated',
+    'time',
+    'downloaded',
+    'header_range',
+    'arch',
+    'name',
+    '_storage_path',
+    'sourcerpm',
+    'checksumtype',
+    'release_sort_index',
+    'changelog',
+    'url',
+    'checksum',
+    'signing_key',
+    'summary',
+    'relativepath',
+    'release',
+    'requires',
+    'recommends',
+    'pk'
+]) - RPM_FIELDS
+
+
+def fetch_units_from_repo(repo_id, type_id, content_model, excludes):
+    """Load the units from a repository.
+
+    Extract all the content in the provided repository from the database and dump them to dicts.
+    For performance, we bypass the ORM and do raw mongo queries, because the extra overhead of
+    creating objects vs dicts wastes too much time and space.
+    """
+    assert repo_id, "Must provide a valid repo_id, not None"
+
+    # NOTE: optimization.
+    # Using a custom, as-pymongo query to load the units as fast as possible.
+    rcuq = model.RepositoryContentUnit.objects.filter(
+        repo_id=repo_id, unit_type_id=type_id).only('unit_id').as_pymongo()
+
+    for rcu_batch in misc.paginate(rcuq):
+        rcu_ids = [rcu['unit_id'] for rcu in rcu_batch]
+        # Why use .excludes() instead of .only()? Because: https://pulp.plan.io/issues/5131
+        for unit in content_model.objects.filter(id__in=rcu_ids).exclude(*excludes).as_pymongo():
+            yield unit
 
 
 def entry_point():
@@ -287,18 +361,17 @@ class YumProfiler(Profiler):
 
         # Create lookup table of available RPMs for errata applicability, find applicable RPMs
         # and modules.
-        additional_unit_fields = ['is_modular']
-        rpms = conduit.get_repo_units(bound_repo_id, TYPE_ID_RPM, additional_unit_fields)
+        rpms = fetch_units_from_repo(bound_repo_id, TYPE_ID_RPM, models.RPM, RPM_EXCLUDE_FIELDS)
 
         available_rpm_nevras = {'modular': set(), 'non-modular': set()}
         for rpm in rpms:
-            rpm_nevra = YumProfiler._create_nevra(rpm.unit_key)
+            rpm_nevra = YumProfiler._create_nevra(rpm)
             name = rpm_nevra[0]
 
             # Modular RPMs have to be among artifacts of enabled modules
-            if rpm.metadata['is_modular'] and rpm_nevra in enabled_rpm_module_map:
+            if rpm.get('is_modular') and rpm_nevra in enabled_rpm_module_map:
                 available_rpm_nevras['modular'].add(rpm_nevra)
-                applicable = YumProfiler._is_rpm_applicable(rpm.unit_key, profile_lookup_table)
+                applicable = YumProfiler._is_rpm_applicable(rpm, profile_lookup_table)
                 if applicable:
                     applicable_modules = enabled_rpm_module_map[rpm_nevra]
                     applicable_unit_ids[TYPE_ID_MODULEMD] = \
@@ -306,14 +379,14 @@ class YumProfiler(Profiler):
 
             # Modular RPMs have precedence over non-modular ones, so names of available non-modular
             # RPMs should not intersect with the modular ones.
-            elif not rpm.metadata['is_modular'] and name not in modular_rpm_names_to_exclude:
+            elif not rpm.get('is_modular') and name not in modular_rpm_names_to_exclude:
                 available_rpm_nevras['non-modular'].add(rpm_nevra)
-                applicable = YumProfiler._is_rpm_applicable(rpm.unit_key, profile_lookup_table)
+                applicable = YumProfiler._is_rpm_applicable(rpm, profile_lookup_table)
             else:
                 applicable = False
 
             if applicable:
-                applicable_unit_ids[TYPE_ID_RPM].add(rpm.metadata['unit_id'])
+                applicable_unit_ids[TYPE_ID_RPM].add(rpm['_id'])
 
         additional_unit_fields = ['pkglist']
         errata = conduit.get_repo_units(bound_repo_id, TYPE_ID_ERRATA, additional_unit_fields)
