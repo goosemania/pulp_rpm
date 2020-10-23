@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('rpm', '0025_remove_orphaned_subrepos'),
+        ('rpm', '0026_checksum_null'),
     ]
 
     operations = [
